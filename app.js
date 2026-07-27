@@ -52,7 +52,7 @@
   const SHEETS = {
     id:       '1xqrEpMRKyYLsECb8koFX92hFZcC5mVCiiKfW_N9CsOY',                       // sheet id from its URL:  /spreadsheets/d/<THIS_PART>/edit
     apiKey:   'AIzaSyAf__GW6zA_n1Pgl91syEZ_LrbtwRhuhkE',                            // Google Cloud API key (Sheets API) — used for public reads
-    clientId: '659216119025-rem9agkeem24cctbaoaabj8ahem91ge9.apps.googleusercontent.com',   // OAuth Web client id — for host sign-in / writes
+    clientId: '659216119025-u8rtddip9kv9riabp205nc92plbbr9cp.apps.googleusercontent.com',   // OAuth Web client id — for host sign-in / writes
     tab:      'Sheet1',                                    // the tab that holds the data
   };
   const USE_SHEETS = !!(SHEETS.id && SHEETS.apiKey);
