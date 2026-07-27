@@ -668,11 +668,13 @@
     if (!Array.isArray(game.cube)) game.cube = null;
     if (typeof game.rowBonus !== 'number') game.rowBonus = 0;
     if (typeof game.sideBonus !== 'number') game.sideBonus = 0;
-    // keep this viewer on their own team
-    if (hostMode) {
-      if (!game.teams.includes(activeTeam)) activeTeam = game.teams[0];
-    } else {
-      activeTeam = (myTeam && game.teams.includes(myTeam)) ? myTeam : game.teams[0];
+    // keep this viewer on their team. A real player is locked to their own team;
+    // a host or spectator can browse teams, so keep whatever they had selected and
+    // only fall back to the first team if that team no longer exists.
+    if (myTeam && !hostMode && !spectator) {
+      activeTeam = game.teams.includes(myTeam) ? myTeam : game.teams[0];
+    } else if (!game.teams.includes(activeTeam)) {
+      activeTeam = game.teams[0];
     }
     stickerData = game.data[activeTeam].stickers;
     loadCubeState(game.data[activeTeam].cube);
