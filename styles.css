@@ -439,7 +439,11 @@
   }
 
   /* ---------- teams: badge, host bar, picker ---------- */
-  .refresh-row { text-align: center; margin: 0 auto 10px; }
+  .view-controls {
+    display: flex; align-items: center; justify-content: center;
+    flex-wrap: wrap; gap: 12px; margin: 0 auto 10px;
+  }
+  .view-controls .team-badge { margin: 0; }
   .refresh-btn {
     background: linear-gradient(#3f5a30, #263a19);
     border-color: #6f8a4a;
