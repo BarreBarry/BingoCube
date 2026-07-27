@@ -441,9 +441,9 @@
   /* ---------- teams: badge, host bar, picker ---------- */
   .view-controls {
     display: flex; align-items: center; justify-content: center;
-    flex-wrap: wrap; gap: 12px; margin: 0 auto 10px;
+    flex-wrap: wrap; gap: 12px; margin: 0 auto 12px;
   }
-  .view-controls .team-badge { margin: 0; }
+  .view-controls .host-bar { margin: 0; width: auto; }
   .refresh-btn {
     background: linear-gradient(#3f5a30, #263a19);
     border-color: #6f8a4a;
