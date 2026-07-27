@@ -1,0 +1,40 @@
+{
+    "teams":  [
+                  "Team Alpha",
+                  "Team Bravo",
+                  "Team Charlie",
+                  "Team Delta"
+              ],
+    "data":  {
+                 "Team Alpha":  {
+                                    "stickers":  {
+
+                                                 },
+                                    "cube":  null,
+                                    "token":  "39321f3bbeca5a483d"
+                                },
+                 "Team Bravo":  {
+                                    "stickers":  {
+
+                                                 },
+                                    "cube":  null,
+                                    "token":  "a10351401b2bb81194"
+                                },
+                 "Team Charlie":  {
+                                      "stickers":  {
+
+                                                   },
+                                      "cube":  null,
+                                      "token":  "c5e50484d019a7dbfb"
+                                  },
+                 "Team Delta":  {
+                                    "stickers":  {
+
+                                                 },
+                                    "cube":  null,
+                                    "token":  "5650e91ba0617abed2"
+                                }
+             },
+    "rowBonus":  0,
+    "sideBonus":  0
+}

@@ -1,4 +1,4 @@
-(() => {
+(async () => {
   "use strict";
 
   /* ===================== CUBE ENGINE ===================== */
@@ -41,19 +41,61 @@
   const GAME_KEY = 'rubiksGame_v3';
   const DEFAULT_TEAMS = ['Team Alpha', 'Team Bravo', 'Team Charlie', 'Team Delta'];
 
-  /* ---------- data source ----------
-     The shared "central store" for the game. TODAY it is the browser's
-     localStorage, which is shared across tabs on one machine. WHEN YOU HOST THIS
-     with a central database, replace the bodies of loadGameRaw()/saveGameRaw()
-     with a GET/POST to your API — everything else (including the live polling in
-     pollGameState()) keeps working and every player stays in sync automatically. */
-  function loadGameRaw() { return localStorage.getItem(GAME_KEY); }
-  function saveGameRaw(json) { localStorage.setItem(GAME_KEY, json); }
+  /* ---------- data source: Google Sheets ----------
+     GitHub Pages stays purely static (no backend). One Google Sheet is the DB:
+       READ  — everyone reads it via the Sheets API + a public API key
+               (the sheet must be shared "Anyone with the link: Viewer").
+       WRITE — the host signs in with Google; the write only succeeds if their
+               Google account has EDIT access to the sheet. That IS the host gate.
+     The game JSON is stored in column A, split into ~45k-char chunks (a cell holds
+     max 50k chars). Leave SHEETS.id blank to fall back to localStorage (offline). */
+  const SHEETS = {
+    id:       '1xqrEpMRKyYLsECb8koFX92hFZcC5mVCiiKfW_N9CsOY',                       // sheet id from its URL:  /spreadsheets/d/<THIS_PART>/edit
+    apiKey:   'AIzaSyAf__GW6zA_n1Pgl91syEZ_LrbtwRhuhkE',                            // Google Cloud API key (Sheets API) — used for public reads
+    clientId: '659216119025-rem9agkeem24cctbaoaabj8ahem91ge9.apps.googleusercontent.com',   // OAuth Web client id — for host sign-in / writes
+    tab:      'Sheet1',                                    // the tab that holds the data
+  };
+  const USE_SHEETS = !!(SHEETS.id && SHEETS.apiKey);
+  const SHEETS_API = 'https://sheets.googleapis.com/v4/spreadsheets';
+  let accessToken = '';                                    // host Google OAuth token (write); never a player's
+  let tokenClient = null;
+
+  async function loadGameRaw() {
+    if (!USE_SHEETS) return localStorage.getItem(GAME_KEY);
+    try {
+      const range = encodeURIComponent(`${SHEETS.tab}!A1:A1000`);
+      const r = await fetch(`${SHEETS_API}/${SHEETS.id}/values/${range}?key=${SHEETS.apiKey}&_=${Date.now()}`, { cache: 'no-store' });
+      if (!r.ok) return null;
+      const j = await r.json();
+      if (!j.values) return null;
+      const joined = j.values.map(row => (row && row[0]) || '').join('');   // reassemble the chunks
+      return joined.trim() ? joined : null;
+    } catch (e) { return null; }
+  }
+  // Returns true only if the write succeeded — i.e. this Google account can edit the sheet.
+  async function saveGameRaw(json) {
+    if (!USE_SHEETS) { localStorage.setItem(GAME_KEY, json); return true; }
+    if (!accessToken) return false;
+    const CHUNK = 45000, values = [];
+    for (let i = 0; i < json.length; i += CHUNK) values.push([json.slice(i, i + CHUNK)]);
+    if (values.length === 0) values.push(['']);
+    const H = { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' };
+    try {
+      const range = encodeURIComponent(`${SHEETS.tab}!A1:A${values.length}`);
+      const r = await fetch(`${SHEETS_API}/${SHEETS.id}/values/${range}?valueInputOption=RAW`,
+        { method: 'PUT', headers: H, body: JSON.stringify({ values }) });
+      if (!r.ok) { if (r.status === 401) accessToken = ''; console.warn('Sheets save failed', r.status); return false; }
+      // clear any stale rows left over from a previously larger save
+      const below = encodeURIComponent(`${SHEETS.tab}!A${values.length + 1}:A100000`);
+      await fetch(`${SHEETS_API}/${SHEETS.id}/values/${below}:clear`, { method: 'POST', headers: H });
+      return true;
+    } catch (e) { console.warn('Sheets save error', e); return false; }
+  }
 
   let lastGameJSON = null;   // last game state this tab has seen (used to detect changes)
 
   let game;
-  try { game = JSON.parse(loadGameRaw()); } catch (e) { game = null; }
+  try { const raw0 = await loadGameRaw(); game = raw0 ? JSON.parse(raw0) : null; } catch (e) { game = null; }
   if (!game || !Array.isArray(game.teams) || !game.data) {
     game = { teams: DEFAULT_TEAMS.slice(), data: {} };
   }
@@ -73,9 +115,14 @@
   let activeTeam = game.teams[0];
   let stickerData = game.data[activeTeam].stickers;   // always points at the active team
 
+  let _ghSaveTimer = null;
   function saveGame() {
-    try { const j = JSON.stringify(game); saveGameRaw(j); lastGameJSON = j; }
-    catch (e) { alert('Could not save — browser storage may be full. Try smaller images.'); }
+    try {
+      const j = JSON.stringify(game);
+      lastGameJSON = j;                                   // optimistic: this tab already holds the new state
+      if (USE_SHEETS) { clearTimeout(_ghSaveTimer); _ghSaveTimer = setTimeout(() => saveGameRaw(j), 2000); }  // coalesce writes
+      else saveGameRaw(j);
+    } catch (e) { console.warn('save failed', e); }
   }
   function saveData() { saveGame(); }                 // alias so existing edit code still works
   function getSticker(sid) { return stickerData[sid] || (stickerData[sid] = {}); }
@@ -327,11 +374,38 @@
     lastTap = now;
     if (tapCount < 5) return;
     tapCount = 0;
-    if (hostMode) { setHostMode(false); return; }
-    const pw = prompt('Enter host password:');
-    if (pw === null) return;
-    if (pw === HOST_PASSWORD) setHostMode(true);
-    else alert('Incorrect password.');
+    if (hostMode) {
+      setHostMode(false);
+      if (USE_SHEETS && accessToken && window.google && google.accounts && google.accounts.oauth2) {
+        try { google.accounts.oauth2.revoke(accessToken); } catch (e) {}
+      }
+      accessToken = '';
+      return;
+    }
+    if (USE_SHEETS) {
+      if (!(window.google && google.accounts && google.accounts.oauth2)) {
+        alert('Google sign-in is still loading — try again in a moment.'); return;
+      }
+      if (!tokenClient) {
+        tokenClient = google.accounts.oauth2.initTokenClient({
+          client_id: SHEETS.clientId,
+          scope: 'https://www.googleapis.com/auth/spreadsheets',
+          callback: async (resp) => {
+            if (!resp || !resp.access_token) return;
+            accessToken = resp.access_token;
+            // Becoming host = proving this Google account can write the sheet.
+            if (await saveGameRaw(JSON.stringify(game))) setHostMode(true);
+            else alert('That Google account does not have edit access to the sheet, so it cannot host.');
+          },
+        });
+      }
+      tokenClient.requestAccessToken();   // opens the Google sign-in / consent popup
+    } else {
+      const pw = prompt('Enter host password:');
+      if (pw === null) return;
+      if (pw === HOST_PASSWORD) setHostMode(true);
+      else alert('Incorrect password.');
+    }
   });
 
   function fillEditor(faceEl) {
@@ -583,9 +657,9 @@
   // bonuses). Runs on an interval and also fires instantly when another browser
   // tab writes. When hosted, this is exactly the loop that keeps players in sync
   // with the host over the network.
-  function pollGameState() {
-    if (busy) return;                                   // don't reload mid-turn animation
-    const raw = loadGameRaw();
+  async function pollGameState() {
+    if (busy || hostMode) return;                       // host is the source of truth; only players/spectators poll
+    const raw = await loadGameRaw();
     if (raw == null || raw === lastGameJSON) return;    // nothing new since last check
     let parsed;
     try { parsed = JSON.parse(raw); } catch (e) { return; }
@@ -859,8 +933,8 @@
 
   // live sync: auto-refresh from the shared state so players never have to reload.
   // Change REFRESH_MS to tune how often it checks (2s here).
-  const REFRESH_MS = 2000;
-  lastGameJSON = loadGameRaw();
+  const REFRESH_MS = USE_SHEETS ? 30000 : 2000;   // Sheets: poll every 30s (well within a 2-min tolerance)
+  lastGameJSON = await loadGameRaw();
   setInterval(pollGameState, REFRESH_MS);
   window.addEventListener('storage', (e) => { if (e.key === GAME_KEY) pollGameState(); });
 
