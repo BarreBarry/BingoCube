@@ -175,7 +175,7 @@
         const slabel = document.createElement('div'); slabel.className = 'slabel';
         fd.appendChild(thumb);
         fd.appendChild(slabel);
-        stickers.push({ sid: fd.dataset.sid, n: f.n });
+        stickers.push({ sid: fd.dataset.sid, n: f.n, sl: slabel });
       }
       el.appendChild(fd);
     }
@@ -198,8 +198,32 @@
   function cubieMatrix(c) {
     return matrix3d(screenR(c.R), [c.pos[0], -c.pos[1], c.pos[2]]);
   }
+
+  // Turning a face spins the stickers on it in 90° steps, which would leave their
+  // text lying sideways/upside-down. We cancel that in-plane spin so every label
+  // reads upright within whatever face it currently occupies — the arrangement can
+  // still be scrambled, the words just stay readable. (Orbit-viewing still tilts
+  // them with the 3D perspective, which is expected.)
+  const LABEL_UP = {            // "up" tangent for a sticker sitting on each outward normal
+    '0,0,1': [0,1,0], '0,0,-1': [0,1,0], '1,0,0': [0,1,0], '-1,0,0': [0,1,0],
+    '0,1,0': [0,0,-1], '0,-1,0': [0,0,1],
+  };
+  const crossv = (a,b) => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
+  const dotv   = (a,b) => a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+  function labelSpinDeg(R, nHome) {
+    const N  = apply(R, nHome);                 // face this sticker is on now
+    const uc = apply(R, LABEL_UP[nHome.join(',')]);   // where its text-up points now
+    const ut = LABEL_UP[N.join(',')];           // where text-up should point for that face
+    // signed angle from uc to ut about the (screen-flipped) normal; always a 90° multiple
+    const deg = Math.round(Math.atan2(dotv(crossv(uc, ut), N), dotv(uc, ut)) / (Math.PI/2)) * 90;
+    return -deg;                                // screenR's y-flip inverts the on-screen sense
+  }
+  function orientLabels(c) {
+    for (const st of c.stickers) st.sl.style.transform = `rotate(${labelSpinDeg(c.R, st.n)}deg)`;
+  }
   function render(c) {
     c.el.style.transform = cubieMatrix(c);
+    orientLabels(c);
   }
 
   for (let x=-1;x<=1;x++)
