@@ -231,6 +231,7 @@
   };
 
   let busy = false;
+  let _refreshing = false;
   const history = [];
 
   function selectLayer(axis, layer) {
@@ -601,6 +602,7 @@
   /* ===================== TEAMS ===================== */
   const teamBadge      = document.getElementById('teamBadge');
   const hostBar        = document.getElementById('hostBar');
+  const refreshBtn     = document.getElementById('refreshBtn');
   const teamPicker     = document.getElementById('teamPicker');
   const boardBody      = document.getElementById('boardBody');
   const teamsInput     = document.getElementById('teamsInput');
@@ -657,13 +659,8 @@
   // bonuses). Runs on an interval and also fires instantly when another browser
   // tab writes. When hosted, this is exactly the loop that keeps players in sync
   // with the host over the network.
-  async function pollGameState() {
-    if (busy || hostMode) return;                       // host is the source of truth; only players/spectators poll
-    const raw = await loadGameRaw();
-    if (raw == null || raw === lastGameJSON) return;    // nothing new since last check
-    let parsed;
-    try { parsed = JSON.parse(raw); } catch (e) { return; }
-    if (!parsed || !Array.isArray(parsed.teams) || !parsed.data) return;
+  // Replace the whole in-memory game with a freshly-read state and re-render everything.
+  function applyGameState(parsed, raw) {
     lastGameJSON = raw;
     game = parsed;
     // in-memory structural guards only — a refresh never writes back
@@ -686,6 +683,43 @@
     updateTeamUI();
     if (edRowBonus) { edRowBonus.value = game.rowBonus; edSideBonus.value = game.sideBonus; }
     if (selectedFace) renderReadonly(selectedFace);
+  }
+
+  async function pollGameState() {
+    if (busy || hostMode) return;                       // host is the source of truth; only players/spectators poll
+    const raw = await loadGameRaw();
+    if (raw == null || raw === lastGameJSON) return;    // nothing new since last check
+    let parsed;
+    try { parsed = JSON.parse(raw); } catch (e) { return; }
+    if (!parsed || !Array.isArray(parsed.teams) || !parsed.data) return;
+    applyGameState(parsed, raw);
+  }
+
+  // Manual "↻ Refresh" button — forces an immediate API read for anyone (players wait
+  // out the 30s poll otherwise). If the host has a pending debounced write, flush it
+  // first so re-reading the sheet can't revert their unsaved edits.
+  async function manualRefresh() {
+    if (busy || _refreshing) return;
+    _refreshing = true;
+    if (refreshBtn) { refreshBtn.disabled = true; refreshBtn.textContent = '↻ Refreshing…'; }
+    try {
+      if (USE_SHEETS && hostMode && _ghSaveTimer) {
+        clearTimeout(_ghSaveTimer); _ghSaveTimer = null;
+        await saveGameRaw(JSON.stringify(game));
+      }
+      const raw = await loadGameRaw();
+      if (raw != null && raw !== lastGameJSON) {
+        let parsed = null;
+        try { parsed = JSON.parse(raw); } catch (e) {}
+        if (parsed && Array.isArray(parsed.teams) && parsed.data) applyGameState(parsed, raw);
+      }
+      if (refreshBtn) refreshBtn.textContent = '✓ Up to date';
+    } catch (e) {
+      if (refreshBtn) refreshBtn.textContent = '⚠ Failed — retry';
+    } finally {
+      _refreshing = false;
+      setTimeout(() => { if (refreshBtn) { refreshBtn.disabled = false; refreshBtn.textContent = '↻ Refresh'; } }, 900);
+    }
   }
 
   function updateTeamUI() {
@@ -937,5 +971,6 @@
   lastGameJSON = await loadGameRaw();
   setInterval(pollGameState, REFRESH_MS);
   window.addEventListener('storage', (e) => { if (e.key === GAME_KEY) pollGameState(); });
+  if (refreshBtn) refreshBtn.addEventListener('click', manualRefresh);
 
 })();

@@ -439,6 +439,15 @@
   }
 
   /* ---------- teams: badge, host bar, picker ---------- */
+  .refresh-row { text-align: center; margin: 0 auto 10px; }
+  .refresh-btn {
+    background: linear-gradient(#3f5a30, #263a19);
+    border-color: #6f8a4a;
+    box-shadow: inset 0 0 0 1px var(--rs-bevel);
+  }
+  .refresh-btn:hover:not(:disabled) { background: linear-gradient(#4d6e3a, #315022); color: #eaffb0; }
+  .refresh-btn:disabled { opacity: .7; cursor: default; }
+
   .team-badge {
     font-family: Georgia, serif; font-weight: bold; font-size: 15px;
     color: var(--rs-gold); text-shadow: 1px 1px 0 #000;
