@@ -1,0 +1,481 @@
+  :root {
+    --face-green:  #2ecc71;
+    --face-blue:   #2f6fed;
+    --face-red:    #e74c3c;
+    --face-orange: #ff8b1a;
+    --face-white:  #f4f4f4;
+    --face-yellow: #ffd400;
+    --cubie: 60px;
+    --gap: 2px;
+    --spacing: 62px; /* cubie + gap */
+
+    /* Old School RuneScape palette */
+    --rs-stone-dark:  #1c1710;
+    --rs-stone:       #3e3529;
+    --rs-stone-lite:  #6b5b3e;
+    --rs-parch:       #d8cba2;
+    --rs-parch-dark:  #b8a878;
+    --rs-gold:        #ffd93b;
+    --rs-orange:      #ff981f;
+    --rs-border:      #0d0a05;
+    --rs-bevel:       #7a6a45;
+    --rs-red:         #932f2f;
+
+    /* sticker status colours */
+    --sticker-cream:  #efe7cb;
+    --sticker-green:  #5aa85f;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: "Trebuchet MS", "Segoe UI", Verdana, sans-serif;
+    color: var(--rs-parch);
+    background-color: #100d08;
+    /* stone texture via layered noise + gradient */
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E"),
+      radial-gradient(circle at 50% 0%, #2a2418, #100d08 70%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    user-select: none;
+    overflow-x: hidden;
+  }
+
+  /* ---------- header / logo ---------- */
+  header {
+    text-align: center;
+    margin-top: 20px;
+    padding: 0 14px;
+  }
+  .logo {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 40px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    color: var(--rs-gold);
+    text-transform: none;
+    text-shadow:
+      -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000,
+       0 3px 0 #6b4a00, 0 5px 6px rgba(0,0,0,.6);
+    margin: 0;
+  }
+  .logo .accent { color: var(--rs-orange); }
+  .tagline {
+    color: #c9b98c;
+    font-size: 13px;
+    margin-top: 4px;
+    text-shadow: 1px 1px 0 #000;
+  }
+
+  /* ---------- reusable RS panel ---------- */
+  .rs-panel {
+    background:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
+      linear-gradient(#4b4030, #37301f);
+    border: 2px solid var(--rs-border);
+    border-radius: 4px;
+    box-shadow:
+      inset 0 0 0 2px var(--rs-bevel),
+      inset 0 0 22px rgba(0,0,0,.55),
+      0 4px 10px rgba(0,0,0,.5);
+  }
+
+  /* ---------- tabs ---------- */
+  .tabbar {
+    display: flex;
+    gap: 6px;
+    margin: 20px 0 0;
+    padding: 6px 6px 0;
+    max-width: 92vw;
+  }
+  .tab {
+    font-family: Georgia, serif;
+    font-size: 16px;
+    font-weight: bold;
+    color: #d8c48c;
+    padding: 10px 26px;
+    cursor: pointer;
+    background: linear-gradient(#453a26, #2e2718);
+    border: 2px solid var(--rs-border);
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    box-shadow: inset 0 0 0 1px var(--rs-bevel);
+    text-shadow: 1px 1px 0 #000;
+    transition: color .1s, background .1s;
+  }
+  .tab:hover { color: var(--rs-gold); }
+  .tab.active {
+    color: var(--rs-orange);
+    background: linear-gradient(#6a5a3a, #4b4030);
+    box-shadow: inset 0 0 0 1px #a08a55, 0 -2px 6px rgba(0,0,0,.3);
+  }
+
+  /* ---------- 3-column layout: host settings | cube | leaderboard ---------- */
+  .layout {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    justify-content: center;
+    align-items: flex-start;
+    width: 97vw;
+    max-width: 1320px;
+    margin: 14px 0 30px;
+  }
+  .col-left  { flex: 0 0 360px; max-width: 360px; display: none; }   /* host only */
+  body.hostmode .col-left { display: block; }
+  .col-left #hostPanel { margin-top: 0; }
+  .col-center {
+    flex: 1 1 500px; max-width: 600px;
+    padding: 18px 16px 24px; border-radius: 8px;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .col-right {
+    flex: 0 0 330px; max-width: 340px;
+    padding: 18px 16px; border-radius: 8px;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .col-right .board-title { font-size: 22px; }
+  @media (max-width: 1080px) {
+    .col-center { order: -1; flex-basis: 100%; }   /* cube on top when stacking */
+  }
+
+  /* ---------- cube stage ---------- */
+  #stage {
+    width: 100%;
+    max-width: 560px;
+    height: 380px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: none;
+    cursor: grab;
+  }
+  #stage:active { cursor: grabbing; }
+
+  /* zoom is applied here, OUTSIDE the perspective, so it scales the finished
+     projection uniformly and never distorts the cube's proportions */
+  #zoomer { transition: transform .1s ease-out; transform: scale(1); }
+  #viewport { perspective: 1200px; }
+  #orbit { transform-style: preserve-3d; transition: transform .15s ease-out; }
+  #cube {
+    position: relative;
+    width: var(--cubie);
+    height: var(--cubie);
+    transform-style: preserve-3d;
+  }
+
+  .cubie {
+    position: absolute;
+    width: var(--cubie);
+    height: var(--cubie);
+    transform-style: preserve-3d;
+    pointer-events: none;   /* only the individual faces are click targets, never the container */
+  }
+  .face {
+    position: absolute;
+    width: var(--cubie);
+    height: var(--cubie);
+    border-radius: 9px;
+    border: 2px solid #0c0e16;
+    background: var(--sticker-cream);
+    backface-visibility: hidden;
+    overflow: hidden;
+    cursor: pointer;
+    transition: background .2s;
+  }
+  .face.done { background: var(--sticker-green); }
+  /* the coloured face shows as a 3px frame around the image, so status
+     (cream / green) stays visible even when a picture is set */
+  .face .thumb {
+    position: absolute;
+    inset: 3px;
+    border-radius: 6px;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    pointer-events: none;
+    display: none;
+  }
+  .face .slabel {
+    position: absolute;
+    inset: 0;                       /* fill the whole tile so it stays readable */
+    align-items: center;            /* even when the face is steeply foreshortened */
+    justify-content: center;
+    font-family: "Trebuchet MS", sans-serif;
+    font-size: 11px;
+    line-height: 1.05;
+    font-weight: bold;
+    text-align: center;
+    color: #1a140a;
+    text-shadow: 0 0 2px #fff, 0 0 3px #fff, 0 1px 1px #fff;  /* readable over cream, green or an image */
+    padding: 2px;
+    overflow: hidden;
+    word-break: break-word;
+    pointer-events: none;
+    display: none;                  /* set to flex in applyFace when there is a label */
+  }
+
+  /* ---------- controls ---------- */
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 520px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+
+  button {
+    font-family: "Trebuchet MS", sans-serif;
+    font-weight: bold;
+    font-size: 14px;
+    color: var(--rs-gold);
+    background: linear-gradient(#5a4c30, #3a3019);
+    border: 2px solid var(--rs-border);
+    border-radius: 6px;
+    padding: 9px 14px;
+    min-width: 46px;
+    cursor: pointer;
+    text-shadow: 1px 1px 0 #000;
+    box-shadow: inset 0 0 0 1px var(--rs-bevel);
+    transition: background .1s, transform .05s;
+  }
+  button:hover { background: linear-gradient(#6e5c3a, #4a3e22); color: #fff2b0; }
+  button:active { transform: translateY(1px); }
+  button.turn { min-width: 52px; }
+  button.primary {
+    color: #fff;
+    background: linear-gradient(#7a3320, #5a2313);
+    box-shadow: inset 0 0 0 1px #c46a3a;
+  }
+  button.primary:hover { background: linear-gradient(#94402a, #6a2b17); }
+  button:disabled { opacity: .45; cursor: default; }
+
+  [hidden] { display: none !important; }
+  .panel {
+    margin-top: 16px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
+    width: 100%;
+    max-width: 540px;
+  }
+  .label {
+    font-family: Georgia, serif;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--rs-orange);
+    text-shadow: 1px 1px 0 #000;
+    align-self: flex-start;
+    padding-left: 4px;
+  }
+  #status {
+    font-size: 15px;
+    height: 22px;
+    color: var(--rs-gold);
+    font-weight: bold;
+    text-shadow: 1px 1px 0 #000;
+  }
+  .divider { width: 100%; height: 2px; background: var(--rs-border); box-shadow: 0 1px 0 var(--rs-bevel); }
+
+  /* ---------- explanation ---------- */
+  #explanation { width: 100%; max-width: 520px; }
+  .exp-title {
+    font-family: Georgia, serif;
+    font-size: 18px;
+    color: var(--rs-gold);
+    text-shadow: 1px 1px 0 #000;
+    margin-bottom: 8px;
+  }
+  .exp-body {
+    background: var(--rs-parch);
+    color: #2a2013;
+    border: 2px solid var(--rs-border);
+    box-shadow: inset 0 0 0 2px var(--rs-bevel);
+    border-radius: 4px;
+    padding: 14px 16px;
+    font-size: 15px;
+    line-height: 1.55;
+    min-height: 74px;
+    font-weight: 600;
+  }
+  .exp-img {
+    width: 128px; height: 128px;
+    background-size: cover; background-position: center;
+    border: 2px solid var(--rs-border);
+    box-shadow: inset 0 0 0 2px var(--rs-bevel);
+    border-radius: 4px;
+    margin-bottom: 10px;
+  }
+  .exp-meta { margin-top: 10px; font-size: 13px; color: #c9b98c; text-shadow: 1px 1px 0 #000; }
+  .exp-status {
+    display: inline-block; padding: 2px 12px; border-radius: 11px;
+    font-size: 12px; font-weight: bold; margin-left: 6px;
+    border: 1px solid var(--rs-border);
+  }
+  .exp-status.pending { background: var(--sticker-cream); color: #5a4a22; }
+  .exp-status.done    { background: var(--sticker-green); color: #0e2a12; }
+
+  /* ---------- host login + editor ---------- */
+  /* invisible secret hotspot — 5 quick clicks reveals the host login */
+  .host-login {
+    position: fixed; top: 0; right: 0; z-index: 90;
+    width: 64px; height: 56px; padding: 0;
+    opacity: 0; cursor: default;
+    border: none; box-shadow: none; background: transparent;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .host-login:hover { background: transparent; color: inherit; }
+  .host-login:active { transform: none; }
+  .host-login:focus { outline: none; }
+  /* while logged in as host, make the hotspot faintly visible so the host can find it to log out */
+  body.hostmode .host-login { opacity: .18; cursor: pointer; }
+  #hostPanel { gap: 14px; }
+  .ed-grid { display: flex; flex-wrap: wrap; gap: 16px; width: 100%; justify-content: center; }
+  .ed-image { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+  .ed-preview {
+    width: 128px; height: 128px;
+    background: var(--sticker-cream); background-size: cover; background-position: center;
+    border: 2px solid var(--rs-border);
+    box-shadow: inset 0 0 0 2px var(--rs-bevel);
+    border-radius: 4px;
+  }
+  .ed-preview.empty { position: relative; }
+  .ed-preview.empty::after {
+    content: "No image"; position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: #8a7a4a; font-size: 12px; font-weight: bold;
+  }
+  .ed-fields { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 6px; }
+  .ed-lab {
+    font-family: Georgia, serif; font-size: 11px; text-transform: uppercase;
+    letter-spacing: 1.5px; color: var(--rs-orange); text-shadow: 1px 1px 0 #000; margin-top: 4px;
+  }
+  #hostPanel input[type=text], #hostPanel textarea {
+    width: 100%; font-family: "Trebuchet MS", sans-serif; font-size: 14px; font-weight: 600;
+    color: #2a2013; background: var(--rs-parch);
+    border: 2px solid var(--rs-border); box-shadow: inset 0 0 0 2px var(--rs-bevel);
+    border-radius: 4px; padding: 8px 10px; resize: vertical;
+  }
+  #hostPanel input[type=number] {
+    font-family: "Trebuchet MS", sans-serif; font-size: 14px; font-weight: 600;
+    color: #2a2013; background: var(--rs-parch);
+    border: 2px solid var(--rs-border); box-shadow: inset 0 0 0 2px var(--rs-bevel);
+    border-radius: 4px; padding: 6px 8px; width: 90px;
+  }
+  .ed-inline {
+    display: flex; flex-direction: column; gap: 4px;
+    font-family: Georgia, serif; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--rs-orange); text-shadow: 1px 1px 0 #000;
+  }
+  .ed-count { font-size: 11px; color: #b7a778; align-self: flex-end; }
+  .teams-saved { font-size: 12px; font-weight: bold; color: #9fe6b4; text-shadow: 1px 1px 0 #000; }
+  .team-links { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+  .link-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .link-row .link-name { min-width: 110px; font-weight: bold; color: var(--rs-gold); text-shadow: 1px 1px 0 #000; font-size: 13px; }
+  #hostPanel .link-row .link-input {
+    width: auto; flex: 1; min-width: 150px; font-size: 12px; padding: 6px 8px;
+  }
+  .link-row button { padding: 6px 12px; font-size: 13px; min-width: 0; }
+  .ed-check { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 14px; color: var(--rs-gold); font-weight: bold; text-shadow: 1px 1px 0 #000; cursor: pointer; }
+  .ed-check input { width: 18px; height: 18px; cursor: pointer; }
+  .btn-file {
+    font-family: "Trebuchet MS", sans-serif; font-weight: bold; font-size: 14px;
+    color: var(--rs-gold); background: linear-gradient(#5a4c30, #3a3019);
+    border: 2px solid var(--rs-border); border-radius: 6px; padding: 9px 14px; cursor: pointer;
+    text-shadow: 1px 1px 0 #000; box-shadow: inset 0 0 0 1px var(--rs-bevel); display: inline-block;
+  }
+  .btn-file:hover { background: linear-gradient(#6e5c3a, #4a3e22); color: #fff2b0; }
+
+  /* ---------- leaderboard ---------- */
+  .board-title {
+    font-family: Georgia, serif;
+    font-size: 26px;
+    color: var(--rs-orange);
+    text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 3px 5px rgba(0,0,0,.5);
+    margin: 4px 0 16px;
+  }
+  .board {
+    width: 100%;
+    max-width: 520px;
+    border-collapse: separate;
+    border-spacing: 0;
+    overflow: hidden;
+    border-radius: 4px;
+    border: 2px solid var(--rs-border);
+    box-shadow: inset 0 0 0 2px var(--rs-bevel);
+  }
+  .board th {
+    font-family: Georgia, serif;
+    background: linear-gradient(#5a2313, #3d160c);
+    color: var(--rs-gold);
+    text-shadow: 1px 1px 0 #000;
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 15px;
+    letter-spacing: 1px;
+    border-bottom: 2px solid var(--rs-border);
+  }
+  .board td {
+    padding: 13px 16px;
+    color: #2a2013;
+    background: var(--rs-parch);
+    font-weight: bold;
+    font-size: 15px;
+    border-bottom: 1px solid var(--rs-parch-dark);
+  }
+  .board tr:nth-child(even) td { background: var(--rs-parch-dark); }
+  .board td.rank { width: 54px; text-align: center; color: #6a3a12; }
+  .board td.pts { text-align: right; width: 120px; }
+  .board tr:last-child td { border-bottom: none; }
+  .medal { font-size: 17px; }
+  .board-note {
+    margin-top: 14px;
+    font-size: 12px;
+    color: #b7a778;
+    text-shadow: 1px 1px 0 #000;
+    text-align: center;
+  }
+
+  /* ---------- teams: badge, host bar, picker ---------- */
+  .team-badge {
+    font-family: Georgia, serif; font-weight: bold; font-size: 15px;
+    color: var(--rs-gold); text-shadow: 1px 1px 0 #000;
+    background: linear-gradient(#453a26, #2e2718);
+    border: 2px solid var(--rs-border); box-shadow: inset 0 0 0 1px var(--rs-bevel);
+    border-radius: 8px; padding: 6px 18px; margin: 0 auto 10px; text-align: center;
+  }
+  .host-bar {
+    display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+    margin: 0 auto 12px; padding: 12px 10px; width: 100%; max-width: 540px;
+    background: linear-gradient(#3f3524, #2c2517);
+    border: 2px solid var(--rs-border); box-shadow: inset 0 0 0 1px var(--rs-bevel);
+    border-radius: 10px;
+  }
+  .host-bar .hb-label {
+    width: 100%; text-align: center; font-family: Georgia, serif; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 2px; color: var(--rs-orange);
+    text-shadow: 1px 1px 0 #000; margin-bottom: 4px;
+  }
+  .team-chip {
+    font-family: "Trebuchet MS", sans-serif; font-weight: bold; font-size: 13px;
+    color: var(--rs-gold); background: linear-gradient(#5a4c30, #3a3019);
+    border: 2px solid var(--rs-border); border-radius: 8px; padding: 8px 14px; cursor: pointer;
+    text-shadow: 1px 1px 0 #000; box-shadow: inset 0 0 0 1px var(--rs-bevel);
+  }
+  .team-chip:hover { background: linear-gradient(#6e5c3a, #4a3e22); color: #fff2b0; }
+  .team-chip.active { color: var(--rs-orange); background: linear-gradient(#6a5a3a, #4b4030); box-shadow: inset 0 0 0 1px #a08a55; }
+  .team-chip .cnt { opacity: .75; font-weight: normal; }
+
+  .overlay {
+    position: fixed; inset: 0; z-index: 80;
+    background: rgba(8,6,3,.88);
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  .overlay-card { max-width: 420px; width: 100%; padding: 26px 22px; border-radius: 10px; text-align: center; }
+  .overlay-title {
+    font-family: Georgia, serif; font-size: 24px; font-weight: bold; color: var(--rs-orange);
+    text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000; margin-bottom: 8px;
+  }
+  .overlay-sub { font-size: 13px; color: #c9b98c; text-shadow: 1px 1px 0 #000; margin-bottom: 18px; }

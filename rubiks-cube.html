@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rubik's Cube — Old School</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <button id="hostBtn" class="host-login">🔒 Host login</button>
+
+  <!-- shown only when a visitor has no valid team link (no team chooser) -->
+  <div id="teamPicker" class="overlay" hidden>
+    <div class="overlay-card rs-panel">
+      <div class="overlay-title">Team link required</div>
+      <div class="overlay-sub">You can only join with your team's own private link. Please ask the host for the link for your team.</div>
+    </div>
+  </div>
+
+  <header>
+    <h1 class="logo">Rubik's <span class="accent">Cube</span></h1>
+    <div class="tagline">An Old School Challenge</div>
+  </header>
+
+  <div class="layout">
+
+    <!-- ============ LEFT: host settings (host only) ============ -->
+    <aside class="col-left">
+      <div class="panel rs-panel" id="hostPanel">
+        <div class="label">Cube rotation</div>
+        <div class="controls" id="turnControls"></div>
+        <div class="divider"></div>
+
+        <div class="label">Edit sticker <span id="edSid">—</span></div>
+        <div class="ed-grid">
+          <div class="ed-image">
+            <div id="edPreview" class="ed-preview empty"></div>
+            <div class="row">
+              <label class="btn-file">Upload image<input type="file" id="edImageInput" accept="image/*" hidden></label>
+              <button id="edClearImg">Remove</button>
+            </div>
+          </div>
+          <div class="ed-fields">
+            <div class="ed-lab">Sticker text (max 20)</div>
+            <input id="edLabel" type="text" maxlength="20" placeholder="e.g. Slay the dragon">
+            <div class="ed-count"><span id="edCount">0</span>/20</div>
+            <div class="ed-lab">Explanation</div>
+            <textarea id="edDesc" rows="3" placeholder="Describe this sticker / task…"></textarea>
+            <div class="ed-lab">Points when completed</div>
+            <input id="edPoints" type="number" min="0" step="1" value="1" style="max-width:110px;">
+            <label class="ed-check"><input type="checkbox" id="edDone"> Mark as complete (turns green)</label>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="label">Scoring bonuses (apply to all teams)</div>
+        <div class="row" style="justify-content:flex-start; align-items:flex-end; gap:16px;">
+          <label class="ed-inline">Row / column bonus<input id="edRowBonus" type="number" min="0" step="1" value="0"></label>
+          <label class="ed-inline">Full side (face) bonus<input id="edSideBonus" type="number" min="0" step="1" value="0"></label>
+        </div>
+
+        <div class="divider"></div>
+        <div class="label">Teams (one per line)</div>
+        <textarea id="teamsInput" rows="4" placeholder="Team Alpha&#10;Team Bravo&#10;…"></textarea>
+        <div class="row" style="align-items:center;">
+          <button id="saveTeams">Save teams</button>
+          <span id="teamsSaved" class="teams-saved" hidden>✓ Teams updated</span>
+        </div>
+
+        <div class="divider"></div>
+        <div class="label">Player links — send each team their own link</div>
+        <div id="teamLinks" class="team-links"></div>
+        <div class="board-note" style="margin-top:6px;text-align:left;">
+          Each link has a random, unguessable code — one team can't guess another's.
+          Opening it drops that player straight onto their team's cube (no picker).
+          Use ↻ to issue a fresh link if one leaks.
+        </div>
+
+        <div class="divider"></div>
+        <div class="row">
+          <button id="edExport">⬇ Export game</button>
+          <label class="btn-file">⬆ Import game<input type="file" id="edImportInput" accept="application/json,.json" hidden></label>
+          <button id="edClearSticker">Clear this sticker</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ============ CENTER: the cube ============ -->
+    <section class="col-center rs-panel">
+      <div class="hint" style="font-size:13px;color:#c9b98c;text-shadow:1px 1px 0 #000;text-align:center;margin-bottom:6px;">
+        Drag to look around · Scroll to zoom · Click a sticker for details
+      </div>
+
+      <div id="teamBadge" class="team-badge" hidden></div>
+      <div id="hostBar" class="host-bar" hidden></div>
+
+      <div id="stage">
+        <div id="zoomer">
+          <div id="viewport">
+            <div id="orbit">
+              <div id="cube"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="status">&nbsp;</div>
+
+      <div class="panel rs-panel">
+        <div class="label">Explanation</div>
+        <div id="explanation">
+          <div id="expTitle" class="exp-title">No sticker selected</div>
+          <div id="expBody" class="exp-body">Click any sticker on the cube to reveal information about it.</div>
+          <div class="exp-meta" id="expMeta" style="display:none">Status: <span id="expStatus" class="exp-status pending">Pending</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ RIGHT: leaderboard (always visible) ============ -->
+    <aside class="col-right rs-panel">
+      <h2 class="board-title">Leaderboards</h2>
+      <table class="board">
+        <thead>
+          <tr><th>#</th><th>Team</th><th style="text-align:right;">Points</th></tr>
+        </thead>
+        <tbody id="boardBody"></tbody>
+      </table>
+      <div class="board-note">Points = each completed sticker's value, plus row / column and full-side bonuses.</div>
+    </aside>
+
+  </div>
+
+<script src="app.js"></script>
+</body>
+</html>

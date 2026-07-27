@@ -1,0 +1,8 @@
+node_modules
+npm-debug.log
+game.db
+game.db-shm
+game.db-wal
+game.json
+.git
+.gitignore

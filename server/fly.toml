@@ -1,0 +1,32 @@
+# Fly.io config for Cube Bingo — the recommended host: it gives a small
+# always-available machine AND a persistent volume, which the SQLite database needs.
+#
+# One-time setup (from inside the server/ folder, after moving it out of OneDrive):
+#   1. Install flyctl:            https://fly.io/docs/hands-on/install-flyctl/
+#   2. fly launch --no-deploy     # accept this fly.toml; choose a unique app name
+#   3. fly volumes create cube_data --size 1 --region <your-region>
+#   4. fly secrets set HOST_PASSWORD=your-strong-password
+#   5. fly deploy
+#   -> live at https://<app-name>.fly.dev
+
+app = "cube-bingo"          # CHANGE to your own unique app name
+primary_region = "ams"      # CHANGE to a region near your players (e.g. iad, lhr, syd, ams)
+
+[build]
+
+[env]
+  DB_FILE = "/data/game.db"
+
+# Persistent disk for the database (created with `fly volumes create cube_data`).
+[[mounts]]
+  source = "cube_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  # During a live game (players polling every 2s) the machine stays awake.
+  # For zero cold-start / always-on, set min_machines_running = 1.

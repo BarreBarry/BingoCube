@@ -1,0 +1,23 @@
+# Render blueprint for Cube Bingo.
+# Deploy: push this server/ folder to a Git repo, then in Render click
+# "New +" -> "Blueprint" and select the repo. Set HOST_PASSWORD when prompted.
+#
+# NOTE ON PERSISTENCE: the `disk` below keeps the SQLite database across restarts,
+# but a persistent disk is a PAID Render feature. On the free plan (no disk) the
+# database is ephemeral and the game resets on redeploy/restart — OK for testing,
+# not for a real event. For free + durable, prefer Fly.io (see fly.toml).
+services:
+  - type: web
+    name: cube-bingo
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter          # a paid plan is required for the persistent disk below
+    envVars:
+      - key: HOST_PASSWORD
+        sync: false        # enter the value in the Render dashboard (kept secret)
+      - key: DB_FILE
+        value: /data/game.db
+    disk:
+      name: cube-data
+      mountPath: /data
+      sizeGB: 1

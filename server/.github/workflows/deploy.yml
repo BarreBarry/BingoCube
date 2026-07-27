@@ -1,0 +1,26 @@
+name: Deploy to Fly.io
+
+# Runs on every push to main (and can be triggered manually from the Actions tab).
+# NOTE: this assumes the server/ folder is your repository root (as recommended),
+# so fly.toml sits next to this .github/ folder. If instead your repo root is the
+# whole Bingo/ folder, add `working-directory: server` to the deploy step below.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: fly-deploy
+  cancel-in-progress: false   # let an in-progress deploy finish before the next
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
