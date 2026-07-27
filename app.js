@@ -175,7 +175,7 @@
         const slabel = document.createElement('div'); slabel.className = 'slabel';
         fd.appendChild(thumb);
         fd.appendChild(slabel);
-        stickers.push({ sid: fd.dataset.sid, n: f.n, sl: slabel });
+        stickers.push({ sid: fd.dataset.sid, n: f.n, sl: slabel, th: thumb });
       }
       el.appendChild(fd);
     }
@@ -219,7 +219,11 @@
     return -deg;                                // screenR's y-flip inverts the on-screen sense
   }
   function orientLabels(c) {
-    for (const st of c.stickers) st.sl.style.transform = `rotate(${labelSpinDeg(c.R, st.n)}deg)`;
+    for (const st of c.stickers) {
+      const deg = labelSpinDeg(c.R, st.n);           // same in-plane spin affects text and image
+      st.sl.style.transform = `rotate(${deg}deg)`;
+      st.th.style.transform = `rotate(${deg}deg)`;
+    }
   }
   function render(c) {
     c.el.style.transform = cubieMatrix(c);
