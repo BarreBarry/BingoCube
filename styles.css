@@ -194,7 +194,7 @@
     position: absolute;
     inset: 3px;
     border-radius: 6px;
-    background-size: cover;
+    background-size: contain;          /* show the whole trimmed icon; sticker colour frames it */
     background-position: center;
     background-repeat: no-repeat;
     pointer-events: none;

@@ -517,7 +517,54 @@
   edRowBonus.addEventListener('input', commitBonuses);
   edSideBonus.addEventListener('input', commitBonuses);
 
-  // image upload — downscaled to keep storage small
+  // Clean an uploaded icon: flood-fill the background (transparent OR near-white,
+  // starting from the borders so interior white is kept) to transparent, then crop
+  // to the remaining content. Removes the whitespace margin AND lets the sticker's
+  // cream/green status show through behind the icon. Output PNG to preserve alpha.
+  function processStickerImage(img) {
+    const MAX = 200;
+    let w = img.width, h = img.height;
+    const scale = Math.min(1, MAX / Math.max(w, h));
+    w = Math.max(1, Math.round(w * scale));
+    h = Math.max(1, Math.round(h * scale));
+    const cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    const ctx = cv.getContext('2d');
+    ctx.drawImage(img, 0, 0, w, h);         // keep source transparency (no white fill)
+    let data;
+    try { data = ctx.getImageData(0, 0, w, h); } catch (e) { return cv.toDataURL('image/png'); }
+    const px = data.data;
+    const isBg = (p) => px[p*4+3] < 24 || (px[p*4] > 238 && px[p*4+1] > 238 && px[p*4+2] > 238);
+    const seen = new Uint8Array(w * h);
+    const stack = [];
+    const pushIf = (x, y) => {
+      if (x < 0 || y < 0 || x >= w || y >= h) return;
+      const p = y * w + x; if (seen[p]) return; seen[p] = 1; if (isBg(p)) stack.push(p);
+    };
+    for (let x = 0; x < w; x++) { pushIf(x, 0); pushIf(x, h - 1); }
+    for (let y = 0; y < h; y++) { pushIf(0, y); pushIf(w - 1, y); }
+    while (stack.length) {
+      const p = stack.pop(), x = p % w, y = (p - x) / w;
+      px[p * 4 + 3] = 0;                     // border-connected background -> transparent
+      pushIf(x + 1, y); pushIf(x - 1, y); pushIf(x, y + 1); pushIf(x, y - 1);
+    }
+    let minX = w, minY = h, maxX = -1, maxY = -1;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      if (px[(y * w + x) * 4 + 3] > 8) { if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y; }
+    }
+    ctx.putImageData(data, 0, 0);
+    if (maxX < minX) return cv.toDataURL('image/png');   // nothing left — keep the cleaned full image
+    const pad = 1;
+    minX = Math.max(0, minX - pad); minY = Math.max(0, minY - pad);
+    maxX = Math.min(w - 1, maxX + pad); maxY = Math.min(h - 1, maxY + pad);
+    const cw = maxX - minX + 1, ch = maxY - minY + 1;
+    const out = document.createElement('canvas');
+    out.width = cw; out.height = ch;
+    out.getContext('2d').drawImage(cv, minX, minY, cw, ch, 0, 0, cw, ch);
+    return out.toDataURL('image/png');
+  }
+
+  // image upload — trimmed + downscaled to keep storage small
   edImageInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file || !selectedFace) return;
@@ -525,19 +572,8 @@
     reader.onload = () => {
       const img = new Image();
       img.onload = () => {
-        const MAX = 200;
-        let w = img.width, h = img.height;
-        const scale = Math.min(1, MAX / Math.max(w, h));
-        w = Math.max(1, Math.round(w * scale));
-        h = Math.max(1, Math.round(h * scale));
-        const cv = document.createElement('canvas');
-        cv.width = w; cv.height = h;
-        const ctx = cv.getContext('2d');
-        ctx.fillStyle = '#ffffff';        // flatten transparency onto white
-        ctx.fillRect(0, 0, w, h);
-        ctx.drawImage(img, 0, 0, w, h);
         const d = getSticker(selectedFace.dataset.sid);
-        d.img = cv.toDataURL('image/jpeg', 0.82);
+        d.img = processStickerImage(img);
         saveData();
         applyFace(selectedFace);
         fillEditor(selectedFace);
