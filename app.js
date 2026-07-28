@@ -1023,7 +1023,7 @@
 
   // live sync: auto-refresh from the shared state so players never have to reload.
   // Change REFRESH_MS to tune how often it checks (2s here).
-  const REFRESH_MS = USE_SHEETS ? 120000 : 2000;   // Sheets: poll every 30s (well within a 2-min tolerance)
+  const REFRESH_MS = USE_SHEETS ? 60000 : 2000;   // Sheets: poll every 30s (well within a 2-min tolerance)
   lastGameJSON = await loadGameRaw();
   setInterval(pollGameState, REFRESH_MS);
   window.addEventListener('storage', (e) => { if (e.key === GAME_KEY) pollGameState(); });
