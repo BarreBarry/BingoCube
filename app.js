@@ -59,6 +59,7 @@
   const SHEETS_API = 'https://sheets.googleapis.com/v4/spreadsheets';
   let accessToken = '';                                    // host Google OAuth token (write); never a player's
   let tokenClient = null;
+  let _afterAuth = null;                                   // one-shot callback run when a fresh token arrives
 
   async function loadGameRaw() {
     if (!USE_SHEETS) return localStorage.getItem(GAME_KEY);
@@ -92,6 +93,22 @@
     } catch (e) { console.warn('Sheets save error', e); return false; }
   }
 
+  // A host write can silently fail once the Google token expires (~1 hour), which
+  // made edits — deletes included — apply locally but never reach the sheet, then
+  // vanish on the next load. So verify the write: on failure, transparently ask
+  // Google for a fresh token and retry with the LATEST state; only nag if that
+  // also fails.
+  async function flushSave(j) {
+    if (await saveGameRaw(j)) return;
+    if (!(USE_SHEETS && hostMode && tokenClient)) return;
+    _afterAuth = async (ok) => {
+      if (ok && await saveGameRaw(JSON.stringify(game))) return;
+      alert('Your latest changes could not be saved to the sheet.\nPlease do the host login again (5 clicks, top-right) to reconnect.');
+    };
+    try { tokenClient.requestAccessToken({ prompt: '' }); }   // '' = refresh without a popup when already consented
+    catch (e) { alert('Your latest changes could not be saved. Please do the host login again to reconnect.'); }
+  }
+
   let lastGameJSON = null;   // last game state this tab has seen (used to detect changes)
 
   let game;
@@ -120,7 +137,7 @@
     try {
       const j = JSON.stringify(game);
       lastGameJSON = j;                                   // optimistic: this tab already holds the new state
-      if (USE_SHEETS) { clearTimeout(_ghSaveTimer); _ghSaveTimer = setTimeout(() => saveGameRaw(j), 2000); }  // coalesce writes
+      if (USE_SHEETS) { clearTimeout(_ghSaveTimer); _ghSaveTimer = setTimeout(() => flushSave(j), 2000); }  // coalesce writes
       else saveGameRaw(j);
     } catch (e) { console.warn('save failed', e); }
   }
@@ -394,6 +411,24 @@
     if (on && selectedFace) fillEditor(selectedFace);
   }
 
+  // Lazily build the one Google token client. Its callback stores the fresh token
+  // and runs whatever one-shot `_afterAuth` was queued (initial host login, or a
+  // silent refresh triggered by an expired-token save failure).
+  function ensureTokenClient() {
+    if (tokenClient) return tokenClient;
+    if (!(window.google && google.accounts && google.accounts.oauth2)) return null;
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: SHEETS.clientId,
+      scope: 'https://www.googleapis.com/auth/spreadsheets',
+      callback: (resp) => {
+        const cb = _afterAuth; _afterAuth = null;
+        if (resp && resp.access_token) { accessToken = resp.access_token; if (cb) cb(true); }
+        else if (cb) cb(false);
+      },
+    });
+    return tokenClient;
+  }
+
   // secret access: 5 clicks in quick succession on the invisible hotspot
   let tapCount = 0, lastTap = 0;
   const TAP_GAP = 600; // ms allowed between consecutive clicks
@@ -412,22 +447,13 @@
       return;
     }
     if (USE_SHEETS) {
-      if (!(window.google && google.accounts && google.accounts.oauth2)) {
-        alert('Google sign-in is still loading — try again in a moment.'); return;
-      }
-      if (!tokenClient) {
-        tokenClient = google.accounts.oauth2.initTokenClient({
-          client_id: SHEETS.clientId,
-          scope: 'https://www.googleapis.com/auth/spreadsheets',
-          callback: async (resp) => {
-            if (!resp || !resp.access_token) return;
-            accessToken = resp.access_token;
-            // Becoming host = proving this Google account can write the sheet.
-            if (await saveGameRaw(JSON.stringify(game))) setHostMode(true);
-            else alert('That Google account does not have edit access to the sheet, so it cannot host.');
-          },
-        });
-      }
+      if (!ensureTokenClient()) { alert('Google sign-in is still loading — try again in a moment.'); return; }
+      _afterAuth = async (ok) => {
+        if (!ok) return;
+        // Becoming host = proving this Google account can write the sheet.
+        if (await saveGameRaw(JSON.stringify(game))) setHostMode(true);
+        else alert('That Google account does not have edit access to the sheet, so it cannot host.');
+      };
       tokenClient.requestAccessToken();   // opens the Google sign-in / consent popup
     } else {
       const pw = prompt('Enter host password:');
@@ -735,7 +761,7 @@
     try {
       if (USE_SHEETS && hostMode && _ghSaveTimer) {
         clearTimeout(_ghSaveTimer); _ghSaveTimer = null;
-        await saveGameRaw(JSON.stringify(game));
+        await flushSave(JSON.stringify(game));
       }
       const raw = await loadGameRaw();
       if (raw != null && raw !== lastGameJSON) {
