@@ -60,6 +60,7 @@
   let accessToken = '';                                    // host Google OAuth token (write); never a player's
   let tokenClient = null;
   let _afterAuth = null;                                   // one-shot callback run when a fresh token arrives
+  let tokenExpiry = 0;                                     // ms epoch when the current token stops working
 
   async function loadGameRaw() {
     if (!USE_SHEETS) return localStorage.getItem(GAME_KEY);
@@ -93,20 +94,50 @@
     } catch (e) { console.warn('Sheets save error', e); return false; }
   }
 
-  // A host write can silently fail once the Google token expires (~1 hour), which
-  // made edits — deletes included — apply locally but never reach the sheet, then
-  // vanish on the next load. So verify the write: on failure, transparently ask
-  // Google for a fresh token and retry with the LATEST state; only nag if that
-  // also fails.
+  // A host write silently fails once the Google token expires (~1 hour): edits
+  // apply locally but never reach the sheet, then vanish on the next load. Google's
+  // token client can't reliably refresh without a click, so: verify every write,
+  // attempt a best-effort silent refresh, and if that can't run, surface a visible
+  // "Reconnect" banner so the host can re-grant with one click and flush the state.
   async function flushSave(j) {
-    if (await saveGameRaw(j)) return;
-    if (!(USE_SHEETS && hostMode && tokenClient)) return;
+    if (await saveGameRaw(j)) { hideSaveBanner(); return true; }
+    if (!(USE_SHEETS && hostMode && tokenClient)) return false;
     _afterAuth = async (ok) => {
-      if (ok && await saveGameRaw(JSON.stringify(game))) return;
-      alert('Your latest changes could not be saved to the sheet.\nPlease do the host login again (5 clicks, top-right) to reconnect.');
+      if (ok && await saveGameRaw(JSON.stringify(game))) hideSaveBanner();
+      else showSaveBanner();
     };
-    try { tokenClient.requestAccessToken({ prompt: '' }); }   // '' = refresh without a popup when already consented
-    catch (e) { alert('Your latest changes could not be saved. Please do the host login again to reconnect.'); }
+    try { tokenClient.requestAccessToken({ prompt: '' }); }   // may refresh silently; else error_callback shows the banner
+    catch (e) { showSaveBanner(); }
+    return false;
+  }
+
+  // Host-only banner shown when saving to the sheet has stopped working (expired
+  // token). Clicking Reconnect is a real user gesture, so the Google popup is
+  // allowed; on success we immediately push the latest state.
+  let _saveBanner = null;
+  function showSaveBanner() {
+    if (!hostMode) return;
+    if (!_saveBanner) {
+      _saveBanner = document.createElement('div');
+      _saveBanner.className = 'save-banner';
+      const msg = document.createElement('span');
+      msg.textContent = '⚠ Host session expired — click Reconnect to keep saving your changes.';
+      const btn = document.createElement('button');
+      btn.type = 'button'; btn.textContent = 'Reconnect';
+      btn.addEventListener('click', reconnectHost);
+      _saveBanner.appendChild(msg); _saveBanner.appendChild(btn);
+      document.body.appendChild(_saveBanner);
+    }
+    _saveBanner.style.display = 'flex';
+  }
+  function hideSaveBanner() { if (_saveBanner) _saveBanner.style.display = 'none'; }
+  function reconnectHost() {
+    if (!ensureTokenClient()) return;
+    _afterAuth = async (ok) => {
+      if (ok && await saveGameRaw(JSON.stringify(game))) hideSaveBanner();
+      else showSaveBanner();
+    };
+    try { tokenClient.requestAccessToken(); } catch (e) { showSaveBanner(); }
   }
 
   let lastGameJSON = null;   // last game state this tab has seen (used to detect changes)
@@ -422,9 +453,14 @@
       scope: 'https://www.googleapis.com/auth/spreadsheets',
       callback: (resp) => {
         const cb = _afterAuth; _afterAuth = null;
-        if (resp && resp.access_token) { accessToken = resp.access_token; if (cb) cb(true); }
-        else if (cb) cb(false);
+        if (resp && resp.access_token) {
+          accessToken = resp.access_token;
+          tokenExpiry = Date.now() + ((+resp.expires_in || 3600) * 1000) - 90000;  // 90s safety margin
+          hideSaveBanner();
+          if (cb) cb(true);
+        } else { if (cb) cb(false); showSaveBanner(); }
       },
+      error_callback: () => { _afterAuth = null; showSaveBanner(); },   // silent refresh needs a click
     });
     return tokenClient;
   }
@@ -443,7 +479,7 @@
       if (USE_SHEETS && accessToken && window.google && google.accounts && google.accounts.oauth2) {
         try { google.accounts.oauth2.revoke(accessToken); } catch (e) {}
       }
-      accessToken = '';
+      accessToken = ''; tokenExpiry = 0; hideSaveBanner();
       return;
     }
     if (USE_SHEETS) {
@@ -1064,5 +1100,7 @@
   setInterval(pollGameState, REFRESH_MS);
   window.addEventListener('storage', (e) => { if (e.key === GAME_KEY) pollGameState(); });
   if (refreshBtn) refreshBtn.addEventListener('click', manualRefresh);
+  // warn the host before an expired token silently drops their edits
+  setInterval(() => { if (USE_SHEETS && hostMode && tokenExpiry && Date.now() > tokenExpiry) showSaveBanner(); }, 30000);
 
 })();
